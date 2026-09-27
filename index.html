@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -84,7 +83,7 @@
   .field label{display:block;font-size:12.5px;font-weight:700;color:#8a8168;margin-bottom:6px;}
   .field input{
     width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid var(--line);
-    font-family:inherit;font-size:14.5px;background:var(--sand);
+    font-family:inherit;font-size:16px;background:var(--sand);
   }
   .field input:focus{outline:none;border-color:var(--teal);background:var(--white);}
   .btn{
@@ -110,6 +109,14 @@
   .login-hint{
     margin-top:18px;font-size:12px;color:#a89f88;text-align:center;line-height:1.9;
   }
+  .app-credit{margin-top:22px;text-align:center;}
+  .app-credit-name{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:800;letter-spacing:3px;color:var(--ink);}
+  .app-credit-by{font-size:11.5px;color:#a89f88;margin-top:4px;letter-spacing:.5px;}
+  .conn-banner{
+    display:none;background:rgba(180,67,59,0.1);color:var(--red);border-radius:8px;
+    padding:9px 12px;font-size:12.5px;margin-bottom:14px;line-height:1.7;text-align:center;
+  }
+  .retry-link{text-decoration:underline;cursor:pointer;font-weight:700;}
   .hidden{display:none !important;}
 
   /* ---------- APP SHELL ---------- */
@@ -164,7 +171,7 @@
 
   textarea{
     width:100%;min-height:110px;border-radius:10px;border:1.5px solid var(--line);
-    padding:12px 14px;font-family:'IBM Plex Mono',monospace;font-size:13px;resize:vertical;background:var(--sand);
+    padding:12px 14px;font-family:'IBM Plex Mono',monospace;font-size:16px;resize:vertical;background:var(--sand);
   }
   textarea:focus,.field input:focus{outline:none;}
   .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
@@ -172,7 +179,7 @@
 
   select{
     width:100%;padding:11px 12px;border-radius:10px;border:1.5px solid var(--line);
-    font-family:inherit;font-size:14px;background:var(--sand);
+    font-family:inherit;font-size:16px;background:var(--sand);
   }
 
   table{width:100%;border-collapse:collapse;font-size:13.5px;}
@@ -288,6 +295,8 @@
     </div>
     <div class="brand-tag">نظام توزيع عملاء المبيعات على المناديب</div>
 
+    <div id="conn-banner" class="conn-banner"></div>
+
     <div class="role-tabs">
       <div class="role-tab active" id="tab-admin" onclick="switchRoleTab('admin')">مدير النظام</div>
       <div class="role-tab" id="tab-rep" onclick="switchRoleTab('rep')">مندوب مبيعات</div>
@@ -305,9 +314,9 @@
     </div>
     <button class="btn btn-primary" onclick="doLogin()">دخول</button>
 
-    <div class="login-hint" id="login-hint">
-      أول مرة تدخل بها كمدير؟ استخدم:<br>
-      <span class="mono">admin</span> / <span class="mono">admin123</span> — وغيّرها بعد الدخول
+    <div class="app-credit">
+      <div class="app-credit-name">DSR</div>
+      <div class="app-credit-by">Edit By Mostafa Refaey</div>
     </div>
   </div>
 </div>
@@ -345,6 +354,7 @@
         <button class="tab-btn" onclick="switchAdminTab('add')" data-tab="add">إضافة بيانات</button>
         <button class="tab-btn" onclick="switchAdminTab('reps')" data-tab="reps">المناديب</button>
         <button class="tab-btn" onclick="switchAdminTab('notes')" data-tab="notes">ملاحظات المناديب</button>
+        <button class="tab-btn" onclick="switchAdminTab('backup')" data-tab="backup">النسخ الاحتياطي</button>
       </div>
 
       <!-- All leads -->
@@ -442,6 +452,21 @@
           <div id="notes-list"></div>
         </div>
       </div>
+
+      <!-- Backup -->
+      <div class="panel" id="admin-panel-backup">
+        <div class="card">
+          <h3>نسخة احتياطية فورية</h3>
+          <div class="sub">نزّل نسخة كاملة من كل بيانات البرنامج (المدير، المناديب، العملاء) كملف على جهازك دلوقتي.</div>
+          <button class="btn btn-teal" onclick="downloadBackupNow()">⬇️ تنزيل نسخة الآن</button>
+        </div>
+        <div class="card">
+          <h3>نسخ تلقائية</h3>
+          <div class="sub">البرنامج بياخد نسخة احتياطية تلقائيًا من غير أي تدخل، كل مرة بتتغير فيها البيانات. تقدر ترجع لأي نسخة قديمة لو حصل أي خطأ.</div>
+          <button class="btn btn-outline btn-sm" onclick="loadAutoBackups()" style="margin-bottom:14px;">🔄 تحديث القائمة</button>
+          <div id="backups-list"><div class="sub">جاري التحميل...</div></div>
+        </div>
+      </div>
     </div>
 
     <!-- ===== REP VIEW ===== -->
@@ -516,20 +541,42 @@ let roleTab = 'admin';
 
 function uid(prefix){ return prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
+let dbConnected = false;
+
 async function loadDB(){
   try{
-    const res = await fetch(SCRIPT_URL);
+    const res = await fetch(SCRIPT_URL, { cache:'no-store' });
     const data = await res.json();
-    if(data && data.admin){ DB = data; return; }
-  }catch(e){ console.error(e); }
-  if(!DB){
-    DB = {
-      admin: { username:'admin', password:'admin123' },
-      reps: [],
-      leads: []
-    };
-    await saveDB();
+    if(data && data.admin){
+      DB = data;
+      dbConnected = true;
+      updateConnBanner();
+      return;
+    }
+    throw new Error('استجابة غير متوقعة من الخادم');
+  }catch(e){
+    console.error(e);
+    dbConnected = false;
+    DB = null;
+    updateConnBanner();
   }
+}
+
+function updateConnBanner(){
+  const banner = document.getElementById('conn-banner');
+  if(!banner) return;
+  if(dbConnected){
+    banner.style.display = 'none';
+  }else{
+    banner.style.display = 'block';
+    banner.innerHTML = 'تعذر الاتصال بقاعدة البيانات (Google Sheets). تأكد من الإنترنت وحاول تاني. <span class="retry-link" onclick="retryLoadDB()">إعادة المحاولة</span>';
+  }
+}
+
+async function retryLoadDB(){
+  const banner = document.getElementById('conn-banner');
+  if(banner) banner.innerHTML = 'جاري إعادة المحاولة...';
+  await loadDB();
 }
 
 async function saveDB(){
@@ -539,7 +586,11 @@ async function saveDB(){
       headers: {'Content-Type':'text/plain;charset=utf-8'},
       body: JSON.stringify(DB)
     });
+    dbConnected = true;
+    updateConnBanner();
   }catch(e){
+    dbConnected = false;
+    updateConnBanner();
     showToast('تعذر حفظ البيانات، تحقق من الاتصال بالإنترنت');
   }
 }
@@ -559,7 +610,6 @@ function switchRoleTab(role){
   roleTab = role;
   document.getElementById('tab-admin').classList.toggle('active', role==='admin');
   document.getElementById('tab-rep').classList.toggle('active', role==='rep');
-  document.getElementById('login-hint').style.display = role==='admin' ? 'block' : 'none';
   document.getElementById('login-error').style.display='none';
 }
 
@@ -613,7 +663,7 @@ function enterApp(){
   document.getElementById('app-screen').style.display='block';
   document.getElementById('admin-view').classList.add('hidden');
   document.getElementById('rep-view').classList.add('hidden');
-  document.getElementById('change-pass-btn').classList.toggle('hidden', session.role !== 'rep');
+  document.getElementById('change-pass-btn').classList.remove('hidden');
 
   if(session.role === 'admin'){
     document.getElementById('admin-view').classList.remove('hidden');
@@ -634,6 +684,7 @@ function switchAdminTab(tab){
   document.querySelectorAll('#admin-view .tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
   document.querySelectorAll('#admin-view .panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('admin-panel-'+tab).classList.add('active');
+  if(tab === 'backup') loadAutoBackups();
 }
 
 /* ===================== ADMIN: RENDER ===================== */
@@ -756,6 +807,61 @@ function renderNotesPanel(){
       <div class="h-text">${escapeHtml(it.text)}</div>
     </div>
   `).join('');
+}
+
+/* ===================== ADMIN: BACKUP ===================== */
+function downloadBackupNow(){
+  const blob = new Blob([JSON.stringify(DB, null, 2)], { type:'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+  a.href = url;
+  a.download = `DSR-backup-${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  showToast('تم تنزيل النسخة الاحتياطية ✓');
+}
+
+async function loadAutoBackups(){
+  const wrap = document.getElementById('backups-list');
+  wrap.innerHTML = `<div class="sub">جاري التحميل...</div>`;
+  try{
+    const res = await fetch(SCRIPT_URL + '?action=backups', { cache:'no-store' });
+    const list = await res.json();
+    if(!Array.isArray(list) || list.length===0){
+      wrap.innerHTML = `<div class="empty-state"><div class="icon">🗄️</div><div class="msg">لسه مفيش نسخ احتياطية تلقائية</div></div>`;
+      return;
+    }
+    wrap.innerHTML = list.map(b=>`
+      <div class="lead-card">
+        <div class="lead-top">
+          <div><strong>${new Date(b.ts).toLocaleString('ar-EG')}</strong></div>
+          <button class="btn btn-outline btn-sm" onclick="restoreAutoBackup('${b.ts}')">استعادة هذه النسخة</button>
+        </div>
+      </div>
+    `).join('');
+  }catch(e){
+    wrap.innerHTML = `<div class="conn-banner" style="display:block;">تعذر تحميل قائمة النسخ الاحتياطية، تحقق من الاتصال بالإنترنت</div>`;
+  }
+}
+
+async function restoreAutoBackup(ts){
+  if(!confirm('هل أنت متأكد؟ هيتم استبدال كل البيانات الحالية بالنسخة دي (هيتم حفظ نسخة من الوضع الحالي تلقائيًا قبل الاستعادة).')) return;
+  try{
+    const res = await fetch(SCRIPT_URL + '?action=restore&ts=' + encodeURIComponent(ts));
+    const result = await res.json();
+    if(result && result.ok){
+      showToast('تمت الاستعادة بنجاح ✓');
+      await loadDB();
+      renderAdmin();
+    }else{
+      showToast('تعذرت الاستعادة، حاول تاني');
+    }
+  }catch(e){
+    showToast('تعذر الاتصال بالخادم');
+  }
 }
 
 /* ===================== ADMIN: ADD LEADS ===================== */
@@ -960,17 +1066,18 @@ function flyCards(evt){
   }
 }
 
-/* ===================== REP: CHANGE OWN PASSWORD ===================== */
+/* ===================== CHANGE OWN PASSWORD (admin + rep) ===================== */
 async function changeOwnPassword(){
-  const rep = DB.reps.find(r=>r.id===session.repId);
-  if(!rep) return;
+  const isAdmin = session.role === 'admin';
+  const target = isAdmin ? DB.admin : DB.reps.find(r=>r.id===session.repId);
+  if(!target) return;
   const oldPass = prompt('اكتب كلمة المرور الحالية للتأكيد:');
   if(oldPass === null) return;
-  if(oldPass !== rep.password){ alert('كلمة المرور الحالية غلط'); return; }
+  if(oldPass !== target.password){ alert('كلمة المرور الحالية غلط'); return; }
   const newPass = prompt('اكتب كلمة المرور الجديدة:');
   if(newPass === null) return;
   if(!newPass.trim()){ alert('كلمة المرور الجديدة فاضية'); return; }
-  rep.password = newPass.trim();
+  target.password = newPass.trim();
   await saveDB();
   showToast('تم تغيير كلمة المرور ✓');
 }
