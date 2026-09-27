@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -290,8 +291,8 @@
 <div id="login-screen">
   <div class="login-card">
     <div class="brand">
-      <div class="brand-mark">م</div>
-      <div class="brand-name">مُوزّع</div>
+      <div class="brand-mark">Internationalpack</div>
+      <div class="brand-name">DSR</div>
     </div>
     <div class="brand-tag">نظام توزيع عملاء المبيعات على المناديب</div>
 
@@ -1018,6 +1019,7 @@ async function removeRep(repId){
 async function assignLeadFromTable(leadId, repId){
   const lead = DB.leads.find(l=>l.id===leadId);
   if(!lead) return;
+  if(lead.repId === (repId || null)) return;
   lead.repId = repId || null;
   const rep = DB.reps.find(r=>r.id===repId);
   lead.history.unshift({ type:'system', text: rep? `تم تحويل العميل إلى المندوب: ${rep.name}` : 'تم إلغاء توزيع العميل', at: Date.now() });
@@ -1167,6 +1169,7 @@ function renderHistory(lead){
 async function reassignLead(repId){
   const lead = DB.leads.find(l=>l.id===currentLeadId);
   if(!lead) return;
+  if(lead.repId === (repId || null)) return;
   lead.repId = repId || null;
   const rep = DB.reps.find(r=>r.id===repId);
   lead.history.unshift({ type:'system', text: rep? `تم تحويل العميل إلى المندوب: ${rep.name}` : 'تم إلغاء توزيع العميل', at: Date.now() });
@@ -1179,6 +1182,7 @@ async function reassignLead(repId){
 async function setStatus(status){
   const lead = DB.leads.find(l=>l.id===currentLeadId);
   if(!lead) return;
+  if(lead.status === status) return;
   lead.status = status;
   const who = session.role==='admin' ? null : DB.reps.find(r=>r.id===session.repId);
   lead.history.unshift({ type: who?'rep':'system', repName: who?who.name:null, text:`تم تغيير حالة العميل إلى: ${status}`, at: Date.now() });
