@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مُوزّع — نظام توزيع عملاء المبيعات</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --ink:#161B22;
+    --ink-soft:#242C38;
+    --sand:#F4EFE6;
+    --sand-2:#EAE2D2;
+    --gold:#C9A227;
+    --gold-soft:#E4C766;
+    --teal:#1F6F6B;
+    --teal-soft:#2E938D;
+    --red:#B4433B;
+    --line:#D9CFB8;
+    --white:#FFFDF8;
+    --shadow: 0 8px 24px rgba(22,27,34,0.12);
+    --radius: 14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    font-family:'Tajawal',sans-serif;
+    background:var(--sand);
+    color:var(--ink);
+    min-height:100vh;
+  }
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  ::selection{background:var(--gold-soft);}
+
+  /* ---------- LOGIN ---------- */
+  #login-screen{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(201,162,39,0.14), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(31,111,107,0.16), transparent 45%),
+      var(--ink);
+  }
+  .login-card{
+    width:100%;
+    max-width:420px;
+    background:var(--white);
+    border-radius:20px;
+    padding:36px 32px 28px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.35);
+    position:relative;
+    overflow:hidden;
+  }
+  .login-card::before{
+    content:"";
+    position:absolute; inset:0 0 auto 0;
+    height:6px;
+    background:linear-gradient(90deg,var(--gold),var(--teal));
+  }
+  .brand{
+    display:flex; align-items:center; gap:10px; margin-bottom:4px;
+  }
+  .brand-mark{
+    width:36px;height:36px;border-radius:10px;
+    background:var(--ink);
+    display:flex;align-items:center;justify-content:center;
+    color:var(--gold-soft); font-weight:900; font-size:18px;
+  }
+  .brand-name{font-weight:900;font-size:20px;letter-spacing:.3px;}
+  .brand-tag{color:#7a7160;font-size:13px;margin:2px 0 26px;}
+  .role-tabs{display:flex;background:var(--sand-2);border-radius:12px;padding:4px;margin-bottom:20px;}
+  .role-tab{
+    flex:1;text-align:center;padding:9px 6px;border-radius:9px;cursor:pointer;
+    font-weight:700;font-size:14px;color:#8a8168;transition:.15s;
+  }
+  .role-tab.active{background:var(--ink);color:var(--gold-soft);}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12.5px;font-weight:700;color:#8a8168;margin-bottom:6px;}
+  .field input{
+    width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid var(--line);
+    font-family:inherit;font-size:14.5px;background:var(--sand);
+  }
+  .field input:focus{outline:none;border-color:var(--teal);background:var(--white);}
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    padding:12px 18px;border-radius:10px;border:none;cursor:pointer;
+    font-family:inherit;font-weight:700;font-size:14.5px;transition:.15s;
+  }
+  .btn-primary{background:var(--ink);color:var(--gold-soft);width:100%;margin-top:6px;}
+  .btn-primary:hover{background:#0d1117;}
+  .btn-gold{background:var(--gold);color:var(--ink);}
+  .btn-gold:hover{background:var(--gold-soft);}
+  .btn-teal{background:var(--teal);color:var(--white);}
+  .btn-teal:hover{background:var(--teal-soft);}
+  .btn-outline{background:transparent;border:1.5px solid var(--line);color:var(--ink);}
+  .btn-outline:hover{border-color:var(--ink);}
+  .btn-danger{background:transparent;color:var(--red);border:1.5px solid rgba(180,67,59,0.35);}
+  .btn-danger:hover{background:rgba(180,67,59,0.08);}
+  .btn-sm{padding:7px 12px;font-size:13px;border-radius:8px;}
+  .login-error{
+    background:rgba(180,67,59,0.1);color:var(--red);border-radius:8px;
+    padding:9px 12px;font-size:13px;margin-bottom:14px;font-weight:700;display:none;
+  }
+  .login-hint{
+    margin-top:18px;font-size:12px;color:#a89f88;text-align:center;line-height:1.9;
+  }
+  .hidden{display:none !important;}
+
+  /* ---------- APP SHELL ---------- */
+  #app-screen{min-height:100vh;display:none;}
+  .topbar{
+    background:var(--ink);color:var(--white);
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 26px; position:sticky; top:0; z-index:20;
+    box-shadow:var(--shadow);
+  }
+  .topbar-left{display:flex;align-items:center;gap:12px;}
+  .topbar .brand-mark{width:32px;height:32px;font-size:16px;}
+  .topbar-title{font-weight:900;font-size:17px;}
+  .topbar-sub{font-size:11.5px;color:#a3ac9a;font-family:'IBM Plex Mono',monospace;}
+  .topbar-right{display:flex;align-items:center;gap:14px;}
+  .who{font-size:13.5px;color:#d8d2c0;}
+  .who b{color:var(--gold-soft);}
+  .logout-btn{
+    background:rgba(255,255,255,0.08);color:var(--white);border:none;
+    padding:8px 14px;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:700;font-size:13px;
+  }
+  .logout-btn:hover{background:rgba(255,255,255,0.16);}
+
+  .container{max-width:1180px;margin:0 auto;padding:26px;}
+
+  .tabs{display:flex;gap:6px;margin-bottom:22px;flex-wrap:wrap;}
+  .tab-btn{
+    padding:9px 16px;border-radius:9px;border:1.5px solid var(--line);background:var(--white);
+    cursor:pointer;font-family:inherit;font-weight:700;font-size:13.5px;color:#6b6350;
+  }
+  .tab-btn.active{background:var(--ink);color:var(--gold-soft);border-color:var(--ink);}
+
+  .panel{display:none;}
+  .panel.active{display:block;}
+
+  .card{
+    background:var(--white);border-radius:var(--radius);padding:22px;
+    box-shadow:var(--shadow);margin-bottom:20px;border:1px solid rgba(0,0,0,0.03);
+  }
+  .card h3{margin:0 0 4px;font-size:16.5px;}
+  .card .sub{color:#8a8168;font-size:13px;margin-bottom:16px;}
+
+  .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:22px;}
+  .stat{
+    background:var(--white);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow);
+    border-inline-start:4px solid var(--gold);
+  }
+  .stat.teal{border-inline-start-color:var(--teal);}
+  .stat.red{border-inline-start-color:var(--red);}
+  .stat .num{font-size:26px;font-weight:900;font-family:'IBM Plex Mono',monospace;}
+  .stat .lbl{font-size:12.5px;color:#8a8168;font-weight:700;margin-top:2px;}
+
+  textarea{
+    width:100%;min-height:110px;border-radius:10px;border:1.5px solid var(--line);
+    padding:12px 14px;font-family:'IBM Plex Mono',monospace;font-size:13px;resize:vertical;background:var(--sand);
+  }
+  textarea:focus,.field input:focus{outline:none;}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  @media(max-width:640px){.grid-2{grid-template-columns:1fr;}}
+
+  select{
+    width:100%;padding:11px 12px;border-radius:10px;border:1.5px solid var(--line);
+    font-family:inherit;font-size:14px;background:var(--sand);
+  }
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  th{
+    text-align:right;padding:10px 12px;color:#8a8168;font-size:12px;font-weight:700;
+    border-bottom:2px solid var(--sand-2);white-space:nowrap;
+  }
+  td{padding:10px 12px;border-bottom:1px solid var(--sand-2);vertical-align:middle;}
+  tr:hover td{background:#FBF8F1;}
+
+  .pill{
+    display:inline-block;padding:4px 11px;border-radius:99px;font-size:11.5px;font-weight:700;
+  }
+  .pill-new{background:#E9EEF7;color:#3A5AA8;}
+  .pill-contacted{background:#FDF2D9;color:#8A6A0E;}
+  .pill-interested{background:#E1F0EE;color:#1F6F6B;}
+  .pill-notinterested{background:#F6E4E2;color:#B4433B;}
+  .pill-sold{background:#E4F3E1;color:#347A2C;}
+  .pill-unassigned{background:#EFEFEF;color:#777;}
+
+  .rep-chip{
+    display:inline-flex;align-items:center;gap:6px;background:var(--sand-2);
+    padding:3px 10px 3px 4px;border-radius:99px;font-size:12.5px;font-weight:700;
+  }
+  .rep-dot{width:8px;height:8px;border-radius:50%;background:var(--teal);}
+
+  .lead-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px;}
+  .lead-card{
+    background:var(--white);border-radius:12px;padding:16px;box-shadow:var(--shadow);
+    cursor:pointer;border:1.5px solid transparent;transition:.15s;position:relative;
+  }
+  .lead-card:hover{border-color:var(--gold);transform:translateY(-2px);}
+  .lead-card .name{font-weight:900;font-size:15.5px;margin-bottom:2px;}
+  .lead-card .phone{font-family:'IBM Plex Mono',monospace;color:#6b6350;font-size:13px;margin-bottom:10px;}
+  .lead-card .extra{font-size:12.5px;color:#8a8168;margin-top:8px;line-height:1.6;}
+
+  .empty-state{
+    text-align:center;padding:50px 20px;color:#a89f88;
+  }
+  .empty-state .icon{font-size:40px;margin-bottom:10px;}
+  .empty-state .msg{font-weight:700;font-size:15px;color:#6b6350;}
+  .empty-state .sub{font-size:13px;margin-top:4px;}
+
+  /* modal */
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(22,27,34,0.55);display:none;
+    align-items:center;justify-content:center;z-index:100;padding:20px;
+  }
+  .modal-overlay.active{display:flex;}
+  .modal{
+    background:var(--white);border-radius:16px;max-width:560px;width:100%;
+    max-height:88vh;overflow-y:auto;box-shadow:0 30px 70px rgba(0,0,0,0.4);
+  }
+  .modal-head{
+    padding:20px 24px;border-bottom:1px solid var(--sand-2);
+    display:flex;justify-content:space-between;align-items:flex-start;
+    position:sticky;top:0;background:var(--white);border-radius:16px 16px 0 0;
+  }
+  .modal-head h3{margin:0;font-size:18px;}
+  .modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:#8a8168;}
+  .modal-body{padding:20px 24px;}
+  .status-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px;}
+  .status-opt{
+    padding:7px 13px;border-radius:8px;border:1.5px solid var(--line);cursor:pointer;
+    font-size:12.5px;font-weight:700;background:var(--white);
+  }
+  .status-opt.selected{background:var(--ink);color:var(--gold-soft);border-color:var(--ink);}
+
+  .history-list{display:flex;flex-direction:column;gap:10px;margin-top:8px;max-height:260px;overflow-y:auto;}
+  .history-item{
+    background:var(--sand);border-radius:10px;padding:10px 13px;border-inline-start:3px solid var(--teal);
+  }
+  .history-item.system{border-inline-start-color:var(--gold);}
+  .history-item .h-top{display:flex;justify-content:space-between;font-size:11px;color:#8a8168;margin-bottom:4px;font-family:'IBM Plex Mono',monospace;}
+  .history-item .h-text{font-size:13.5px;line-height:1.6;}
+
+  .info-line{display:flex;gap:8px;font-size:13.5px;margin-bottom:6px;}
+  .info-line b{color:#8a8168;min-width:60px;font-weight:700;}
+
+  .toast{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--ink);color:var(--gold-soft);padding:12px 22px;border-radius:10px;
+    font-weight:700;font-size:13.5px;box-shadow:0 10px 30px rgba(0,0,0,0.3);
+    opacity:0;transition:.25s;z-index:200;pointer-events:none;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  .deal-fly{
+    position:fixed;width:46px;height:30px;background:var(--gold);border-radius:5px;
+    box-shadow:0 6px 16px rgba(0,0,0,0.3);z-index:300;pointer-events:none;
+  }
+
+  .rep-card{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:13px 16px;border-radius:10px;background:var(--sand);margin-bottom:8px;
+  }
+  .rep-card .r-name{font-weight:700;}
+  .rep-card .r-user{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8a8168;}
+  .rep-card .r-count{font-size:12px;color:var(--teal);font-weight:700;}
+
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px;}
+  .toolbar select, .toolbar input{width:auto;min-width:160px;}
+</style>
+</head>
+<body>
+
+<!-- ================= LOGIN ================= -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="brand">
+      <div class="brand-mark">م</div>
+      <div class="brand-name">مُوزّع</div>
+    </div>
+    <div class="brand-tag">نظام توزيع عملاء المبيعات على المناديب</div>
+
+    <div class="role-tabs">
+      <div class="role-tab active" id="tab-admin" onclick="switchRoleTab('admin')">مدير النظام</div>
+      <div class="role-tab" id="tab-rep" onclick="switchRoleTab('rep')">مندوب مبيعات</div>
+    </div>
+
+    <div class="login-error" id="login-error"></div>
+
+    <div class="field">
+      <label>اسم المستخدم</label>
+      <input type="text" id="login-username" placeholder="اكتب اسم المستخدم">
+    </div>
+    <div class="field">
+      <label>كلمة المرور</label>
+      <input type="password" id="login-password" placeholder="••••••••">
+    </div>
+    <button class="btn btn-primary" onclick="doLogin()">دخول</button>
+
+    <div class="login-hint" id="login-hint">
+      أول مرة تدخل بها كمدير؟ استخدم:<br>
+      <span class="mono">admin</span> / <span class="mono">admin123</span> — وغيّرها بعد الدخول
+    </div>
+  </div>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="app-screen">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="brand-mark">م</div>
+      <div>
+        <div class="topbar-title">مُوزّع</div>
+        <div class="topbar-sub" id="topbar-sub">لوحة المدير</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="who">مرحباً، <b id="who-name"></b></div>
+      <button class="logout-btn hidden" id="change-pass-btn" onclick="changeOwnPassword()">🔒 تغيير كلمة المرور</button>
+      <button class="logout-btn" onclick="doLogout()">تسجيل الخروج</button>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- ===== ADMIN VIEW ===== -->
+    <div id="admin-view" class="hidden">
+      <div class="stat-row">
+        <div class="stat"><div class="num" id="stat-total">0</div><div class="lbl">إجمالي العملاء</div></div>
+        <div class="stat red"><div class="num" id="stat-unassigned">0</div><div class="lbl">لم يتم توزيعهم</div></div>
+        <div class="stat teal"><div class="num" id="stat-reps">0</div><div class="lbl">عدد المناديب</div></div>
+        <div class="stat"><div class="num" id="stat-sold">0</div><div class="lbl">تم البيع</div></div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchAdminTab('leads')" data-tab="leads">كل العملاء</button>
+        <button class="tab-btn" onclick="switchAdminTab('add')" data-tab="add">إضافة بيانات</button>
+        <button class="tab-btn" onclick="switchAdminTab('reps')" data-tab="reps">المناديب</button>
+        <button class="tab-btn" onclick="switchAdminTab('notes')" data-tab="notes">ملاحظات المناديب</button>
+      </div>
+
+      <!-- All leads -->
+      <div class="panel active" id="admin-panel-leads">
+        <div class="card">
+          <h3>كل العملاء المُحمّلين على النظام</h3>
+          <div class="sub">وزّعهم تلقائياً على المناديب أو غيّر المندوب المسؤول يدوياً</div>
+          <div class="toolbar">
+            <button class="btn btn-gold btn-sm" onclick="autoDistribute(event)">⚡ توزيع تلقائي على المناديب</button>
+            <select id="filter-rep" onchange="renderAdminLeadsTable()">
+              <option value="all">كل المناديب</option>
+            </select>
+            <select id="filter-status" onchange="renderAdminLeadsTable()">
+              <option value="all">كل الحالات</option>
+              <option value="جديد">جديد</option>
+              <option value="تم التواصل">تم التواصل</option>
+              <option value="مهتم">مهتم</option>
+              <option value="غير مهتم">غير مهتم</option>
+              <option value="تم البيع">تم البيع</option>
+            </select>
+          </div>
+          <div id="admin-leads-table-wrap"></div>
+        </div>
+      </div>
+
+      <!-- Add data -->
+      <div class="panel" id="admin-panel-add">
+        <div class="card">
+          <h3>إضافة عملاء جدد</h3>
+          <div class="sub">أضف عميل واحد بالنموذج، أو الصق عدة عملاء دفعة واحدة (سطر لكل عميل)</div>
+
+          <div class="grid-2" style="margin-bottom:18px;">
+            <div class="field"><label>اسم العميل</label><input id="add-name" placeholder="مثال: أحمد محمود"></div>
+            <div class="field"><label>رقم الهاتف</label><input id="add-phone" placeholder="01xxxxxxxxx"></div>
+          </div>
+          <div class="field"><label>ملاحظات إضافية (اختياري)</label><input id="add-note" placeholder="المدينة، مصدر العميل، المنتج المهتم به..."></div>
+          <button class="btn btn-teal" onclick="addSingleLead()">+ إضافة العميل</button>
+
+          <hr style="margin:24px 0;border:none;border-top:1px solid var(--sand-2);">
+
+          <h3>استيراد من ملف إكسل</h3>
+          <div class="sub">الملف لازم يكون فيه 3 أعمدة بالترتيب: <b>الاسم</b> — <b>الهاتف</b> — <b>ملاحظات</b> (والصف الأول ممكن يكون عناوين أو بيانات مباشرة)</div>
+
+          <div class="toolbar" style="margin-bottom:0;">
+            <button class="btn btn-outline btn-sm" onclick="downloadTemplate()">⬇ تحميل نموذج إكسل فارغ</button>
+            <label class="btn btn-gold btn-sm" style="cursor:pointer;margin:0;">
+              📤 اختيار ملف إكسل (xlsx / xls / csv)
+              <input type="file" id="excel-file-input" accept=".xlsx,.xls,.csv" onchange="handleExcelFile(event)" style="display:none;">
+            </label>
+          </div>
+          <div id="import-preview" style="margin-top:14px;"></div>
+
+          <hr style="margin:24px 0;border:none;border-top:1px solid var(--sand-2);">
+
+          <details>
+            <summary style="cursor:pointer;font-weight:700;font-size:14px;color:#6b6350;">أو الصق بيانات نصياً بدل الإكسل</summary>
+            <div style="margin-top:14px;">
+              <div class="sub">كل سطر بالشكل: <span class="mono">الاسم, الهاتف, ملاحظة</span></div>
+              <textarea id="bulk-input" placeholder="أحمد محمود, 01012345678, القاهرة - فيسبوك
+سارة علي, 01198765432, اسكندرية - إحالة عميل"></textarea>
+              <button class="btn btn-teal" style="margin-top:12px;" onclick="addBulkLeads()">+ إضافة الدفعة</button>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <!-- Reps -->
+      <div class="panel" id="admin-panel-reps">
+        <div class="card">
+          <h3>إضافة مندوب مبيعات</h3>
+          <div class="sub">أنشئ اسم مستخدم وكلمة مرور لكل مندوب ليدخل بها ويشوف عملاءه فقط</div>
+          <div class="grid-2" style="margin-bottom:14px;">
+            <div class="field"><label>اسم المندوب</label><input id="rep-name" placeholder="مثال: محمد سعيد"></div>
+            <div class="field"><label>اسم المستخدم</label><input id="rep-username" placeholder="mohamed.s"></div>
+          </div>
+          <div class="field" style="max-width:280px;"><label>كلمة المرور</label><input id="rep-password" type="text" placeholder="كلمة مرور بسيطة"></div>
+          <button class="btn btn-teal" onclick="addRep()">+ إضافة مندوب</button>
+        </div>
+        <div class="card">
+          <h3>المناديب الحاليين</h3>
+          <div id="reps-list"></div>
+        </div>
+      </div>
+
+      <!-- Reps' notes -->
+      <div class="panel" id="admin-panel-notes">
+        <div class="card">
+          <h3>ملاحظات المناديب</h3>
+          <div class="sub">كل الملاحظات اللي كتبها المناديب على عملائهم، الأحدث أولاً</div>
+          <div class="toolbar">
+            <select id="notes-filter-rep" onchange="renderNotesPanel()">
+              <option value="all">كل المناديب</option>
+            </select>
+          </div>
+          <div id="notes-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== REP VIEW ===== -->
+    <div id="rep-view" class="hidden">
+      <div class="stat-row">
+        <div class="stat"><div class="num" id="rep-stat-total">0</div><div class="lbl">عملائي</div></div>
+        <div class="stat teal"><div class="num" id="rep-stat-new">0</div><div class="lbl">جديد لم يُتواصل معه</div></div>
+        <div class="stat"><div class="num" id="rep-stat-sold">0</div><div class="lbl">تم البيع</div></div>
+      </div>
+      <div class="card">
+        <h3>عملائي المرشحين</h3>
+        <div class="sub">افتح أي عميل عشان تسجل تواصلك معاه وتضيف ملاحظاتك</div>
+        <div class="toolbar">
+          <select id="rep-filter-status" onchange="renderRepLeads()">
+            <option value="all">كل الحالات</option>
+            <option value="جديد">جديد</option>
+            <option value="تم التواصل">تم التواصل</option>
+            <option value="مهتم">مهتم</option>
+            <option value="غير مهتم">غير مهتم</option>
+            <option value="تم البيع">تم البيع</option>
+          </select>
+        </div>
+        <div id="rep-leads-wrap"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ================= LEAD DETAIL MODAL ================= -->
+<div class="modal-overlay" id="lead-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <h3 id="modal-lead-name">—</h3>
+        <div class="mono" id="modal-lead-phone" style="font-size:13px;color:#8a8168;margin-top:3px;"></div>
+      </div>
+      <button class="modal-close" onclick="closeLeadModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="modal-admin-assign" class="hidden" style="margin-bottom:16px;">
+        <label style="font-size:12.5px;font-weight:700;color:#8a8168;display:block;margin-bottom:6px;">المندوب المسؤول</label>
+        <select id="modal-assign-select" onchange="reassignLead(this.value)"></select>
+      </div>
+
+      <div id="modal-extra-info" style="margin-bottom:16px;"></div>
+
+      <label style="font-size:12.5px;font-weight:700;color:#8a8168;display:block;margin-bottom:8px;">الحالة</label>
+      <div class="status-row" id="status-row"></div>
+
+      <label style="font-size:12.5px;font-weight:700;color:#8a8168;display:block;margin-bottom:8px;">إضافة ملاحظة</label>
+      <textarea id="note-input" style="min-height:70px;" placeholder="اكتب اللي حصل بينك وبين العميل..."></textarea>
+      <button class="btn btn-teal btn-sm" style="margin-top:10px;" onclick="addNote()">+ حفظ الملاحظة</button>
+
+      <label style="font-size:12.5px;font-weight:700;color:#8a8168;display:block;margin:20px 0 4px;">سجل العميل (Timeline)</label>
+      <div class="history-list" id="history-list"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===================== DATA LAYER (Google Sheets backend) ===================== */
+// ألصق هنا رابط الـ Web App اللي هتاخده بعد نشر كود Apps Script على الشيت
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz4CO-NtNpzZojRHWm5eSd0TTqoaCi2zHi6K_rMbtQdMOkIGX_PG0OzIWIa1QLNkIPb/exec';
+
+let DB = null; // {admin:{username,password}, reps:[], leads:[]}
+let session = null; // {role:'admin'|'rep', repId?}
+let currentLeadId = null;
+let roleTab = 'admin';
+
+function uid(prefix){ return prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+async function loadDB(){
+  try{
+    const res = await fetch(SCRIPT_URL);
+    const data = await res.json();
+    if(data && data.admin){ DB = data; return; }
+  }catch(e){ console.error(e); }
+  if(!DB){
+    DB = {
+      admin: { username:'admin', password:'admin123' },
+      reps: [],
+      leads: []
+    };
+    await saveDB();
+  }
+}
+
+async function saveDB(){
+  try{
+    await fetch(SCRIPT_URL, {
+      method:'POST',
+      headers: {'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify(DB)
+    });
+  }catch(e){
+    showToast('تعذر حفظ البيانات، تحقق من الاتصال بالإنترنت');
+  }
+}
+
+/* ===================== TOAST ===================== */
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* ===================== LOGIN ===================== */
+function switchRoleTab(role){
+  roleTab = role;
+  document.getElementById('tab-admin').classList.toggle('active', role==='admin');
+  document.getElementById('tab-rep').classList.toggle('active', role==='rep');
+  document.getElementById('login-hint').style.display = role==='admin' ? 'block' : 'none';
+  document.getElementById('login-error').style.display='none';
+}
+
+async function doLogin(){
+  const errBox = document.getElementById('login-error');
+  if(!DB){
+    errBox.textContent = 'لسه بيتم تحميل البيانات، حاول تاني بعد ثانية';
+    errBox.style.display='block';
+    return;
+  }
+  const u = document.getElementById('login-username').value.trim();
+  const p = document.getElementById('login-password').value;
+  const errBox = document.getElementById('login-error');
+  errBox.style.display='none';
+
+  if(!u || !p){
+    errBox.textContent = 'اكتب اسم المستخدم وكلمة المرور';
+    errBox.style.display='block';
+    return;
+  }
+
+  if(roleTab === 'admin'){
+    if(u === DB.admin.username && p === DB.admin.password){
+      session = { role:'admin' };
+      enterApp();
+    }else{
+      errBox.textContent = 'بيانات المدير غير صحيحة';
+      errBox.style.display='block';
+    }
+  }else{
+    const rep = DB.reps.find(r => r.username === u && r.password === p);
+    if(rep){
+      session = { role:'rep', repId: rep.id };
+      enterApp();
+    }else{
+      errBox.textContent = 'اسم المستخدم أو كلمة المرور غير صحيحة';
+      errBox.style.display='block';
+    }
+  }
+}
+
+function doLogout(){
+  session = null;
+  document.getElementById('app-screen').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('login-username').value='';
+  document.getElementById('login-password').value='';
+}
+
+function enterApp(){
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app-screen').style.display='block';
+  document.getElementById('admin-view').classList.add('hidden');
+  document.getElementById('rep-view').classList.add('hidden');
+  document.getElementById('change-pass-btn').classList.toggle('hidden', session.role !== 'rep');
+
+  if(session.role === 'admin'){
+    document.getElementById('admin-view').classList.remove('hidden');
+    document.getElementById('topbar-sub').textContent = 'لوحة المدير';
+    document.getElementById('who-name').textContent = 'مدير النظام';
+    renderAdmin();
+  }else{
+    document.getElementById('rep-view').classList.remove('hidden');
+    const rep = DB.reps.find(r=>r.id===session.repId);
+    document.getElementById('topbar-sub').textContent = 'لوحة المندوب';
+    document.getElementById('who-name').textContent = rep ? rep.name : '';
+    renderRep();
+  }
+}
+
+/* ===================== ADMIN: TABS ===================== */
+function switchAdminTab(tab){
+  document.querySelectorAll('#admin-view .tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+  document.querySelectorAll('#admin-view .panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('admin-panel-'+tab).classList.add('active');
+}
+
+/* ===================== ADMIN: RENDER ===================== */
+function renderAdmin(){
+  const total = DB.leads.length;
+  const unassigned = DB.leads.filter(l=>!l.repId).length;
+  const sold = DB.leads.filter(l=>l.status==='تم البيع').length;
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-unassigned').textContent = unassigned;
+  document.getElementById('stat-reps').textContent = DB.reps.length;
+  document.getElementById('stat-sold').textContent = sold;
+
+  const filterRep = document.getElementById('filter-rep');
+  const currentVal = filterRep.value;
+  filterRep.innerHTML = '<option value="all">كل المناديب</option><option value="none">بدون توزيع</option>' +
+    DB.reps.map(r=>`<option value="${r.id}">${escapeHtml(r.name)}</option>`).join('');
+  filterRep.value = currentVal || 'all';
+
+  renderAdminLeadsTable();
+  renderRepsList();
+  renderNotesPanel();
+}
+
+function renderAdminLeadsTable(){
+  const wrap = document.getElementById('admin-leads-table-wrap');
+  const repFilter = document.getElementById('filter-rep').value;
+  const statusFilter = document.getElementById('filter-status').value;
+
+  let leads = DB.leads.slice().sort((a,b)=>b.createdAt-a.createdAt);
+  if(repFilter === 'none') leads = leads.filter(l=>!l.repId);
+  else if(repFilter !== 'all') leads = leads.filter(l=>l.repId===repFilter);
+  if(statusFilter !== 'all') leads = leads.filter(l=>l.status===statusFilter);
+
+  if(leads.length===0){
+    wrap.innerHTML = `<div class="empty-state"><div class="icon">📇</div><div class="msg">لا يوجد عملاء بهذه الفلاتر</div><div class="sub">أضف عملاء جدد من تبويب "إضافة بيانات"</div></div>`;
+    return;
+  }
+
+  let rows = leads.map(l=>{
+    const rep = DB.reps.find(r=>r.id===l.repId);
+    return `<tr onclick="openLeadModal('${l.id}')" style="cursor:pointer;">
+      <td><b>${escapeHtml(l.name)}</b></td>
+      <td class="mono">${escapeHtml(l.phone)}</td>
+      <td>${statusPill(l.status)}</td>
+      <td>${rep ? `<span class="rep-chip"><span class="rep-dot"></span>${escapeHtml(rep.name)}</span>` : `<span class="pill pill-unassigned">غير موزّع</span>`}</td>
+      <td>
+        <select onclick="event.stopPropagation()" onchange="assignLeadFromTable('${l.id}', this.value)" style="width:auto;padding:6px 8px;font-size:12px;">
+          <option value="">— نقل لمندوب —</option>
+          ${DB.reps.map(r=>`<option value="${r.id}" ${r.id===l.repId?'selected':''}>${escapeHtml(r.name)}</option>`).join('')}
+        </select>
+      </td>
+    </tr>`;
+  }).join('');
+
+  wrap.innerHTML = `<div style="overflow-x:auto;"><table>
+    <thead><tr><th>الاسم</th><th>الهاتف</th><th>الحالة</th><th>المندوب</th><th>تغيير المندوب</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+function statusPill(status){
+  const map = {
+    'جديد':'pill-new','تم التواصل':'pill-contacted','مهتم':'pill-interested',
+    'غير مهتم':'pill-notinterested','تم البيع':'pill-sold'
+  };
+  return `<span class="pill ${map[status]||'pill-new'}">${status}</span>`;
+}
+
+function renderRepsList(){
+  const wrap = document.getElementById('reps-list');
+  if(DB.reps.length===0){
+    wrap.innerHTML = `<div class="empty-state"><div class="icon">🧑‍💼</div><div class="msg">لسه مفيش مناديب</div><div class="sub">أضف أول مندوب من النموذج فوق</div></div>`;
+    return;
+  }
+  wrap.innerHTML = DB.reps.map(r=>{
+    const count = DB.leads.filter(l=>l.repId===r.id).length;
+    return `<div class="rep-card">
+      <div>
+        <div class="r-name">${escapeHtml(r.name)}</div>
+        <div class="r-user">${escapeHtml(r.username)} / ${escapeHtml(r.password)}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="r-count">${count} عميل</div>
+        <button class="btn btn-danger btn-sm" onclick="removeRep('${r.id}')">حذف</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ===================== ADMIN: REPS' NOTES ===================== */
+function renderNotesPanel(){
+  const wrap = document.getElementById('notes-list');
+  const filterSel = document.getElementById('notes-filter-rep');
+  const currentVal = filterSel.value || 'all';
+  filterSel.innerHTML = '<option value="all">كل المناديب</option>' +
+    DB.reps.map(r=>`<option value="${r.id}">${escapeHtml(r.name)}</option>`).join('');
+  filterSel.value = currentVal;
+
+  let items = [];
+  DB.leads.forEach(l=>{
+    l.history.forEach(h=>{
+      if(h.type==='rep'){
+        const rep = DB.reps.find(r=>r.name===h.repName);
+        items.push({ leadId:l.id, leadName:l.name, repName:h.repName, repId: rep?rep.id:null, text:h.text, at:h.at });
+      }
+    });
+  });
+  if(filterSel.value !== 'all'){
+    items = items.filter(it=>it.repId===filterSel.value);
+  }
+  items.sort((a,b)=>b.at-a.at);
+
+  if(items.length===0){
+    wrap.innerHTML = `<div class="empty-state"><div class="icon">📝</div><div class="msg">لسه مفيش ملاحظات من المناديب</div></div>`;
+    return;
+  }
+  wrap.innerHTML = items.map(it=>`
+    <div class="history-item" style="cursor:pointer;" onclick="openLeadModal('${it.leadId}')">
+      <div class="h-top"><span><b>${escapeHtml(it.repName||'')}</b> — ${escapeHtml(it.leadName)}</span><span>${new Date(it.at).toLocaleString('ar-EG')}</span></div>
+      <div class="h-text">${escapeHtml(it.text)}</div>
+    </div>
+  `).join('');
+}
+
+/* ===================== ADMIN: ADD LEADS ===================== */
+async function addSingleLead(){
+  const name = document.getElementById('add-name').value.trim();
+  const phone = document.getElementById('add-phone').value.trim();
+  const note = document.getElementById('add-note').value.trim();
+  if(!name || !phone){ showToast('اكتب اسم ورقم هاتف على الأقل'); return; }
+
+  DB.leads.push(newLead(name, phone, note));
+  await saveDB();
+  document.getElementById('add-name').value='';
+  document.getElementById('add-phone').value='';
+  document.getElementById('add-note').value='';
+  showToast('تم إضافة العميل ✓');
+  renderAdmin();
+}
+
+async function addBulkLeads(){
+  const raw = document.getElementById('bulk-input').value.trim();
+  if(!raw){ showToast('الصق بيانات العملاء أولاً'); return; }
+  const lines = raw.split('\n').map(l=>l.trim()).filter(Boolean);
+  let count = 0;
+  lines.forEach(line=>{
+    const parts = line.split(',').map(p=>p.trim());
+    const name = parts[0] || '';
+    const phone = parts[1] || '';
+    const note = parts.slice(2).join(', ') || '';
+    if(name && phone){
+      DB.leads.push(newLead(name, phone, note));
+      count++;
+    }
+  });
+  if(count===0){ showToast('مفيش سطور صحيحة (الاسم, الهاتف)'); return; }
+  await saveDB();
+  document.getElementById('bulk-input').value='';
+  showToast(`تم إضافة ${count} عميل ✓`);
+  renderAdmin();
+}
+
+/* ===================== EXCEL IMPORT / TEMPLATE ===================== */
+function downloadTemplate(){
+  const wsData = [
+    ['الاسم','الهاتف','ملاحظات'],
+    ['أحمد محمود','01012345678','القاهرة - فيسبوك'],
+    ['سارة علي','01198765432','اسكندرية - إحالة عميل']
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = [{wch:22},{wch:16},{wch:30}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'عملاء');
+  XLSX.writeFile(wb, 'نموذج_استيراد_عملاء.xlsx');
+}
+
+function handleExcelFile(evt){
+  const file = evt.target.files[0];
+  const preview = document.getElementById('import-preview');
+  if(!file) return;
+  preview.innerHTML = `<div class="sub">جاري القراءة...</div>`;
+
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type:'array' });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(sheet, { header:1, defval:'' });
+      importRowsToLeads(rows);
+    }catch(err){
+      preview.innerHTML = `<div class="login-error" style="display:block;">تعذر قراءة الملف، تأكد إنه ملف إكسل أو CSV سليم</div>`;
+    }
+    evt.target.value = '';
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+async function importRowsToLeads(rows){
+  const preview = document.getElementById('import-preview');
+  if(!rows || rows.length===0){
+    preview.innerHTML = `<div class="sub">الملف فاضي.</div>`;
+    return;
+  }
+
+  const headerWords = ['اسم','name','الاسم'];
+  let startIdx = 0;
+  const firstRowJoined = (rows[0]||[]).join(' ').toString().toLowerCase();
+  if(headerWords.some(h=>firstRowJoined.includes(h))) startIdx = 1;
+
+  let added = 0, skipped = 0;
+  for(let i=startIdx; i<rows.length; i++){
+    const r = rows[i] || [];
+    const name = (r[0]||'').toString().trim();
+    const phone = (r[1]||'').toString().trim();
+    const note = (r[2]||'').toString().trim();
+    if(name && phone){
+      DB.leads.push(newLead(name, phone, note));
+      added++;
+    }else if(name || phone){
+      skipped++;
+    }
+  }
+
+  if(added===0){
+    preview.innerHTML = `<div class="login-error" style="display:block;">مفيش صفوف صحيحة (لازم اسم + هاتف على الأقل في كل صف)</div>`;
+    return;
+  }
+
+  await saveDB();
+  preview.innerHTML = `<div style="background:rgba(31,111,107,0.1);color:var(--teal);border-radius:8px;padding:10px 14px;font-size:13.5px;font-weight:700;">
+    تم استيراد ${added} عميل بنجاح ✓ ${skipped ? `(تخطينا ${skipped} صف ناقص بيانات)` : ''}
+  </div>`;
+  showToast(`تم استيراد ${added} عميل من الإكسل ✓`);
+  renderAdmin();
+}
+
+function newLead(name, phone, note){
+  return {
+    id: uid('lead'),
+    name, phone, note,
+    repId: null,
+    status: 'جديد',
+    createdAt: Date.now(),
+    history: [{ type:'system', text:'تمت إضافة العميل للنظام', at: Date.now() }]
+  };
+}
+
+/* ===================== ADMIN: REPS ===================== */
+async function addRep(){
+  const name = document.getElementById('rep-name').value.trim();
+  const username = document.getElementById('rep-username').value.trim();
+  const password = document.getElementById('rep-password').value.trim();
+  if(!name || !username || !password){ showToast('املأ كل الحقول'); return; }
+  if(DB.reps.some(r=>r.username===username)){ showToast('اسم المستخدم موجود بالفعل'); return; }
+
+  DB.reps.push({ id: uid('rep'), name, username, password });
+  await saveDB();
+  document.getElementById('rep-name').value='';
+  document.getElementById('rep-username').value='';
+  document.getElementById('rep-password').value='';
+  showToast('تم إضافة المندوب ✓');
+  renderAdmin();
+}
+
+async function removeRep(repId){
+  if(!confirm('هل تريد حذف هذا المندوب؟ سيتم إلغاء توزيع عملائه.')) return;
+  DB.reps = DB.reps.filter(r=>r.id!==repId);
+  DB.leads.forEach(l=>{ if(l.repId===repId) l.repId=null; });
+  await saveDB();
+  showToast('تم حذف المندوب');
+  renderAdmin();
+}
+
+async function assignLeadFromTable(leadId, repId){
+  const lead = DB.leads.find(l=>l.id===leadId);
+  if(!lead) return;
+  lead.repId = repId || null;
+  const rep = DB.reps.find(r=>r.id===repId);
+  lead.history.unshift({ type:'system', text: rep? `تم تحويل العميل إلى المندوب: ${rep.name}` : 'تم إلغاء توزيع العميل', at: Date.now() });
+  await saveDB();
+  renderAdmin();
+  showToast('تم التحديث ✓');
+}
+
+/* ===================== AUTO DISTRIBUTE (with fly animation) ===================== */
+async function autoDistribute(evt){
+  if(DB.reps.length===0){ showToast('أضف مناديب أولاً'); return; }
+  const unassigned = DB.leads.filter(l=>!l.repId);
+  if(unassigned.length===0){ showToast('كل العملاء موزّعين بالفعل'); return; }
+
+  let i = 0;
+  unassigned.forEach(lead=>{
+    const rep = DB.reps[i % DB.reps.length];
+    lead.repId = rep.id;
+    lead.history.unshift({ type:'system', text:`تم توزيع العميل تلقائياً على: ${rep.name}`, at: Date.now() });
+    i++;
+  });
+  await saveDB();
+  flyCards(evt);
+  showToast(`تم توزيع ${unassigned.length} عميل على ${DB.reps.length} مندوب ✓`);
+  setTimeout(renderAdmin, 350);
+}
+
+function flyCards(evt){
+  const startX = evt ? evt.clientX : window.innerWidth/2;
+  const startY = evt ? evt.clientY : window.innerHeight/2;
+  const n = Math.min(DB.reps.length, 6);
+  for(let k=0;k<n;k++){
+    const card = document.createElement('div');
+    card.className = 'deal-fly';
+    card.style.left = startX+'px';
+    card.style.top = startY+'px';
+    document.body.appendChild(card);
+    const angle = (Math.PI*2/n)*k;
+    const dx = Math.cos(angle)*160;
+    const dy = Math.sin(angle)*160 - 40;
+    card.animate([
+      { transform:'translate(0,0) rotate(0deg)', opacity:1 },
+      { transform:`translate(${dx}px, ${dy}px) rotate(${(k%2?1:-1)*180}deg)`, opacity:0 }
+    ], { duration: 550 + k*40, easing:'cubic-bezier(.2,.8,.3,1)' });
+    setTimeout(()=>card.remove(), 700+k*40);
+  }
+}
+
+/* ===================== REP: CHANGE OWN PASSWORD ===================== */
+async function changeOwnPassword(){
+  const rep = DB.reps.find(r=>r.id===session.repId);
+  if(!rep) return;
+  const oldPass = prompt('اكتب كلمة المرور الحالية للتأكيد:');
+  if(oldPass === null) return;
+  if(oldPass !== rep.password){ alert('كلمة المرور الحالية غلط'); return; }
+  const newPass = prompt('اكتب كلمة المرور الجديدة:');
+  if(newPass === null) return;
+  if(!newPass.trim()){ alert('كلمة المرور الجديدة فاضية'); return; }
+  rep.password = newPass.trim();
+  await saveDB();
+  showToast('تم تغيير كلمة المرور ✓');
+}
+
+/* ===================== REP: RENDER ===================== */
+function renderRep(){
+  const rep = DB.reps.find(r=>r.id===session.repId);
+  if(!rep){ doLogout(); return; }
+  const mine = DB.leads.filter(l=>l.repId===rep.id);
+  document.getElementById('rep-stat-total').textContent = mine.length;
+  document.getElementById('rep-stat-new').textContent = mine.filter(l=>l.status==='جديد').length;
+  document.getElementById('rep-stat-sold').textContent = mine.filter(l=>l.status==='تم البيع').length;
+  renderRepLeads();
+}
+
+function renderRepLeads(){
+  const rep = DB.reps.find(r=>r.id===session.repId);
+  const statusFilter = document.getElementById('rep-filter-status').value;
+  let mine = DB.leads.filter(l=>l.repId===rep.id).sort((a,b)=>b.createdAt-a.createdAt);
+  if(statusFilter !== 'all') mine = mine.filter(l=>l.status===statusFilter);
+
+  const wrap = document.getElementById('rep-leads-wrap');
+  if(mine.length===0){
+    wrap.innerHTML = `<div class="empty-state"><div class="icon">🗂️</div><div class="msg">مفيش عملاء بهذه الحالة</div><div class="sub">هيظهر هنا أي عميل يوزّعه لك المدير</div></div>`;
+    return;
+  }
+  wrap.innerHTML = `<div class="lead-cards">` + mine.map(l=>`
+    <div class="lead-card" onclick="openLeadModal('${l.id}')">
+      ${statusPill(l.status)}
+      <div class="name" style="margin-top:10px;">${escapeHtml(l.name)}</div>
+      <div class="phone">${escapeHtml(l.phone)}</div>
+      ${l.note ? `<div class="extra">${escapeHtml(l.note)}</div>` : ''}
+    </div>
+  `).join('') + `</div>`;
+}
+
+/* ===================== LEAD MODAL ===================== */
+const STATUS_OPTIONS = ['جديد','تم التواصل','مهتم','غير مهتم','تم البيع'];
+
+function openLeadModal(leadId){
+  currentLeadId = leadId;
+  const lead = DB.leads.find(l=>l.id===leadId);
+  if(!lead) return;
+
+  document.getElementById('modal-lead-name').textContent = lead.name;
+  document.getElementById('modal-lead-phone').textContent = lead.phone;
+
+  const extra = document.getElementById('modal-extra-info');
+  extra.innerHTML = lead.note ? `<div class="info-line"><b>ملاحظة:</b> ${escapeHtml(lead.note)}</div>` : '';
+
+  const assignBox = document.getElementById('modal-admin-assign');
+  if(session.role === 'admin'){
+    assignBox.classList.remove('hidden');
+    const sel = document.getElementById('modal-assign-select');
+    sel.innerHTML = '<option value="">— بدون مندوب —</option>' +
+      DB.reps.map(r=>`<option value="${r.id}" ${r.id===lead.repId?'selected':''}>${escapeHtml(r.name)}</option>`).join('');
+  }else{
+    assignBox.classList.add('hidden');
+  }
+
+  const statusRow = document.getElementById('status-row');
+  statusRow.innerHTML = STATUS_OPTIONS.map(s=>
+    `<div class="status-opt ${s===lead.status?'selected':''}" onclick="setStatus('${s}')">${s}</div>`
+  ).join('');
+
+  renderHistory(lead);
+  document.getElementById('note-input').value='';
+  document.getElementById('lead-modal').classList.add('active');
+}
+
+function closeLeadModal(){
+  document.getElementById('lead-modal').classList.remove('active');
+  currentLeadId = null;
+}
+
+function renderHistory(lead){
+  const list = document.getElementById('history-list');
+  const items = lead.history.slice().sort((a,b)=>b.at-a.at);
+  list.innerHTML = items.map(h=>`
+    <div class="history-item ${h.type==='system'?'system':''}">
+      <div class="h-top"><span>${h.type==='system' ? 'النظام' : escapeHtml(h.repName||'')}</span><span>${new Date(h.at).toLocaleString('ar-EG')}</span></div>
+      <div class="h-text">${escapeHtml(h.text)}</div>
+    </div>
+  `).join('');
+}
+
+async function reassignLead(repId){
+  const lead = DB.leads.find(l=>l.id===currentLeadId);
+  if(!lead) return;
+  lead.repId = repId || null;
+  const rep = DB.reps.find(r=>r.id===repId);
+  lead.history.unshift({ type:'system', text: rep? `تم تحويل العميل إلى المندوب: ${rep.name}` : 'تم إلغاء توزيع العميل', at: Date.now() });
+  await saveDB();
+  renderHistory(lead);
+  renderAdmin();
+  showToast('تم التحديث ✓');
+}
+
+async function setStatus(status){
+  const lead = DB.leads.find(l=>l.id===currentLeadId);
+  if(!lead) return;
+  lead.status = status;
+  const who = session.role==='admin' ? null : DB.reps.find(r=>r.id===session.repId);
+  lead.history.unshift({ type: who?'rep':'system', repName: who?who.name:null, text:`تم تغيير حالة العميل إلى: ${status}`, at: Date.now() });
+  await saveDB();
+  openLeadModal(lead.id);
+  if(session.role==='admin') renderAdmin(); else renderRep();
+}
+
+async function addNote(){
+  const text = document.getElementById('note-input').value.trim();
+  if(!text) return;
+  const lead = DB.leads.find(l=>l.id===currentLeadId);
+  if(!lead) return;
+  const who = session.role==='admin' ? null : DB.reps.find(r=>r.id===session.repId);
+  lead.history.unshift({ type: who?'rep':'system', repName: who?who.name:'المدير', text, at: Date.now() });
+  await saveDB();
+  document.getElementById('note-input').value='';
+  renderHistory(lead);
+  showToast('تم حفظ الملاحظة ✓');
+}
+
+/* ===================== UTIL ===================== */
+function escapeHtml(str){
+  return (str||'').toString()
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+document.getElementById('lead-modal').addEventListener('click', (e)=>{
+  if(e.target.id==='lead-modal') closeLeadModal();
+});
+
+/* ===================== INIT ===================== */
+(async function init(){
+  await loadDB();
+})();
+</script>
+</body>
+</html>
