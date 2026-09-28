@@ -291,6 +291,9 @@
   .pager{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:16px;font-size:13px;color:#6b6350;font-weight:700;flex-wrap:wrap;}
   .toolbar input.search{min-width:220px;padding:11px 12px;border-radius:10px;border:1.5px solid var(--line);font-family:inherit;font-size:16px;background:var(--sand);}
   .brand-mark, .topbar .brand-mark{width:auto;min-width:36px;padding:0 10px;font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:1px;}
+  .topbar{flex-wrap:wrap;gap:8px;}
+  .topbar-right{flex-wrap:wrap;gap:8px;}
+  @media(max-width:640px){ .topbar{padding:12px 14px;} .container{padding:16px;} }
 </style>
 </head>
 <body>
@@ -341,6 +344,7 @@
       </div>
     </div>
     <div class="topbar-right">
+      <button class="logout-btn" id="refresh-btn" onclick="refreshData()">🔄 تحديث</button>
       <div class="save-state" id="save-state"></div>
       <div class="who">مرحباً، <b id="who-name"></b></div>
       <button class="logout-btn hidden" id="change-pass-btn" onclick="changeOwnPassword()">🔒 تغيير كلمة المرور</button>
@@ -1354,6 +1358,29 @@ async function addNote(){
   document.getElementById('note-input').value='';
   renderHistory(lead);
   showToast('تم حفظ الملاحظة ✓');
+}
+
+/* ===================== REFRESH (من غير ما تخرج) ===================== */
+async function refreshData(){
+  if(!session) return;
+  const btn = document.getElementById('refresh-btn');
+  btn.disabled = true; btn.textContent = '⏳ جاري التحديث...';
+  try{
+    if(savePending || saving){
+      const saved = await saveDBNow();
+      if(!saved){ showToast('فيه تغييرات لسه ما اتحفظتش، حاول تاني بعد شوية'); return; }
+    }
+    const oldAuth = authData;
+    await loadAuthData();
+    if(!authData){ authData = oldAuth; showToast('تعذر التحديث، تحقق من الإنترنت'); return; }
+    const ok = await loadFullDB();
+    if(!ok){ showToast('تعذر تحميل البيانات، حاول تاني'); return; }
+    if(currentLeadId) closeLeadModal();
+    if(session.role==='admin') renderAdmin(); else renderRep();
+    showToast('تم التحديث ✓');
+  }finally{
+    btn.disabled = false; btn.textContent = '🔄 تحديث';
+  }
 }
 
 /* ===================== PAGING + DELETE ===================== */
