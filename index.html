@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>مُوزّع — نظام توزيع عملاء المبيعات</title>
+<title>IPPI — نظام توزيع عملاء المبيعات</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -72,7 +72,7 @@
     display:flex;align-items:center;justify-content:center;
     color:var(--gold-soft); font-weight:900; font-size:18px;
   }
-  .brand-name{font-weight:900;font-size:20px;letter-spacing:.3px;}
+  .brand-name{font-weight:900;font-size:30px;letter-spacing:4px;font-family:'IBM Plex Mono',monospace;}
   .brand-tag{color:#7a7160;font-size:13px;margin:2px 0 26px;}
   .role-tabs{display:flex;background:var(--sand-2);border-radius:12px;padding:4px;margin-bottom:20px;}
   .role-tab{
@@ -131,7 +131,7 @@
   }
   .topbar-left{display:flex;align-items:center;gap:12px;}
   .topbar .brand-mark{width:32px;height:32px;font-size:16px;}
-  .topbar-title{font-weight:900;font-size:17px;}
+  .topbar-title{font-weight:900;font-size:20px;letter-spacing:3px;font-family:'IBM Plex Mono',monospace;}
   .topbar-sub{font-size:11.5px;color:#a3ac9a;font-family:'IBM Plex Mono',monospace;}
   .topbar-right{display:flex;align-items:center;gap:14px;}
   .who{font-size:13.5px;color:#d8d2c0;}
@@ -284,6 +284,12 @@
 
   .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px;}
   .toolbar select, .toolbar input{width:auto;min-width:160px;}
+  .save-state{font-size:12px;font-weight:700;padding:5px 10px;border-radius:99px;background:rgba(255,255,255,0.08);color:#d8d2c0;white-space:nowrap;}
+  .save-state.saving,.save-state.pending{color:var(--gold-soft);}
+  .save-state.saved{color:#8fd19e;}
+  .save-state.error{color:#ff9c94;}
+  .pager{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:16px;font-size:13px;color:#6b6350;font-weight:700;flex-wrap:wrap;}
+  .toolbar input.search{min-width:220px;padding:11px 12px;border-radius:10px;border:1.5px solid var(--line);font-family:inherit;font-size:16px;background:var(--sand);}
 </style>
 </head>
 <body>
@@ -292,8 +298,7 @@
 <div id="login-screen">
   <div class="login-card">
     <div class="brand">
-      <div class="brand-mark">IPPI</div>
-      <div class="brand-name">DSR</div>
+      <div class="brand-name">IPPI</div>
     </div>
     <div class="brand-tag">نظام توزيع عملاء المبيعات على المناديب</div>
 
@@ -317,7 +322,7 @@
     <button class="btn btn-primary" id="login-submit-btn" onclick="doLogin()">دخول</button>
 
     <div class="app-credit">
-      <div class="app-credit-name">DSR</div>
+      <div class="app-credit-name">IPPI</div>
       <div class="app-credit-by">Edit By Mostafa Refaey</div>
     </div>
   </div>
@@ -327,13 +332,13 @@
 <div id="app-screen">
   <div class="topbar">
     <div class="topbar-left">
-      <div class="brand-mark">م</div>
       <div>
-        <div class="topbar-title">مُوزّع</div>
+        <div class="topbar-title">IPPI</div>
         <div class="topbar-sub" id="topbar-sub">لوحة المدير</div>
       </div>
     </div>
     <div class="topbar-right">
+      <div class="save-state" id="save-state"></div>
       <div class="who">مرحباً، <b id="who-name"></b></div>
       <button class="logout-btn hidden" id="change-pass-btn" onclick="changeOwnPassword()">🔒 تغيير كلمة المرور</button>
       <button class="logout-btn" onclick="doLogout()">تسجيل الخروج</button>
@@ -366,10 +371,12 @@
           <div class="sub">وزّعهم تلقائياً على المناديب أو غيّر المندوب المسؤول يدوياً</div>
           <div class="toolbar">
             <button class="btn btn-gold btn-sm" onclick="autoDistribute(event)">⚡ توزيع تلقائي على المناديب</button>
-            <select id="filter-rep" onchange="renderAdminLeadsTable()">
+            <input class="search" id="admin-search" placeholder="🔍 ابحث بالاسم أو الرقم" oninput="adminFilterChanged()">
+            <button class="btn btn-danger btn-sm" onclick="deleteAllLeads()">🗑 حذف كل العملاء</button>
+            <select id="filter-rep" onchange="adminFilterChanged()">
               <option value="all">كل المناديب</option>
             </select>
-            <select id="filter-status" onchange="renderAdminLeadsTable()">
+            <select id="filter-status" onchange="adminFilterChanged()">
               <option value="all">كل الحالات</option>
               <option value="جديد">جديد</option>
               <option value="تم التواصل">تم التواصل</option>
@@ -379,6 +386,7 @@
             </select>
           </div>
           <div id="admin-leads-table-wrap"></div>
+          <div id="admin-pager" class="pager"></div>
         </div>
       </div>
 
@@ -482,7 +490,8 @@
         <h3>عملائي المرشحين</h3>
         <div class="sub">افتح أي عميل عشان تسجل تواصلك معاه وتضيف ملاحظاتك</div>
         <div class="toolbar">
-          <select id="rep-filter-status" onchange="renderRepLeads()">
+          <input class="search" id="rep-search" placeholder="🔍 ابحث بالاسم أو الرقم" oninput="repFilterChanged()">
+          <select id="rep-filter-status" onchange="repFilterChanged()">
             <option value="all">كل الحالات</option>
             <option value="جديد">جديد</option>
             <option value="تم التواصل">تم التواصل</option>
@@ -492,6 +501,7 @@
           </select>
         </div>
         <div id="rep-leads-wrap"></div>
+        <div id="rep-pager" class="pager"></div>
       </div>
     </div>
 
@@ -512,6 +522,7 @@
       <div id="modal-admin-assign" class="hidden" style="margin-bottom:16px;">
         <label style="font-size:12.5px;font-weight:700;color:#8a8168;display:block;margin-bottom:6px;">المندوب المسؤول</label>
         <select id="modal-assign-select" onchange="reassignLead(this.value)"></select>
+        <button class="btn btn-danger btn-sm" style="margin-top:10px;" onclick="deleteCurrentLead()">🗑 حذف هذا العميل</button>
       </div>
 
       <div id="modal-extra-info" style="margin-bottom:16px;"></div>
@@ -604,20 +615,75 @@ async function retryLoadDB(){
   await loadAuthData();
 }
 
-async function saveDB(){
+const PAGE_SIZE = 50;
+let adminPage = 0, repPage = 0;
+let saveTimer = null, saving = false, savePending = false, saveRetries = 0;
+
+function setSaveState(state){
+  const el = document.getElementById('save-state');
+  if(!el) return;
+  el.className = 'save-state ' + state;
+  el.textContent = state==='saving' ? '⏳ جاري الحفظ...'
+    : state==='saved' ? '✓ تم الحفظ'
+    : state==='pending' ? '● تغييرات لم تُحفظ بعد'
+    : state==='error' ? '⚠ لم يتم الحفظ' : '';
+}
+
+// حفظ سريع: الواجهة بتتحدّث فورًا والحفظ بيتم في الخلفية (وبيجمّع كذا تغيير في حفظة واحدة)
+function saveDB(){
+  savePending = true;
+  setSaveState('pending');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(flushSave, 700);
+  return Promise.resolve(true);
+}
+
+// حفظ فوري ومنتظر النتيجة (للاستيراد والحذف وتغيير الباسورد)
+async function saveDBNow(){
+  clearTimeout(saveTimer);
+  savePending = true;
+  while(saving){ await new Promise(r=>setTimeout(r,150)); }
+  return await flushSave();
+}
+
+async function flushSave(){
+  if(saving || !savePending) return !savePending;
+  saving = true; savePending = false; setSaveState('saving');
+  let ok = false;
   try{
-    await fetch(SCRIPT_URL, {
+    const res = await fetch(SCRIPT_URL, {
       method:'POST',
       headers: {'Content-Type':'text/plain;charset=utf-8'},
       body: JSON.stringify(DB)
     });
-    dbConnected = true;
-    updateConnBanner();
-  }catch(e){
-    dbConnected = false;
-    updateConnBanner();
-    showToast('تعذر حفظ البيانات، تحقق من الاتصال بالإنترنت');
+    const result = await res.json();
+    ok = !!(result && result.ok);
+  }catch(e){ ok = false; }
+  saving = false;
+  if(ok){
+    saveRetries = 0;
+    if(savePending){ setSaveState('pending'); clearTimeout(saveTimer); saveTimer = setTimeout(flushSave, 300); }
+    else setSaveState('saved');
+    return true;
   }
+  savePending = true;
+  setSaveState('error');
+  showToast('تعذر حفظ البيانات، تحقق من الاتصال بالإنترنت');
+  if(saveRetries < 3){ saveRetries++; clearTimeout(saveTimer); saveTimer = setTimeout(flushSave, 5000); }
+  return false;
+}
+
+window.addEventListener('beforeunload', (e)=>{
+  if(savePending || saving){ e.preventDefault(); e.returnValue=''; }
+});
+
+// توحيد صيغة رقم الهاتف عشان نكشف التكرار (01005151451 = +201005151451 = 1005151451)
+function normPhone(p){
+  let d = (p||'').toString().replace(/[٠-٩]/g, c=>'٠١٢٣٤٥٦٧٨٩'.indexOf(c)).replace(/\D/g,'');
+  if(d.startsWith('0020')) d = d.slice(2);
+  if(d.startsWith('20') && d.length===12) d = '0' + d.slice(2);
+  else if(d.length===10 && d.startsWith('1')) d = '0' + d;
+  return d;
 }
 
 /* ===================== TOAST ===================== */
@@ -681,6 +747,7 @@ async function doLogin(){
   loginBtn.textContent = 'جاري تحميل بيانات العملاء...';
   loginBtn.disabled = true;
 
+  if(DB && (savePending || saving)) await saveDBNow();
   const ok = await loadFullDB();
 
   loginBtn.textContent = originalText;
@@ -763,8 +830,18 @@ function renderAdminLeadsTable(){
   if(repFilter === 'none') leads = leads.filter(l=>!l.repId);
   else if(repFilter !== 'all') leads = leads.filter(l=>l.repId===repFilter);
   if(statusFilter !== 'all') leads = leads.filter(l=>l.status===statusFilter);
+  const q = (document.getElementById('admin-search').value||'').trim().toLowerCase();
+  if(q){
+    const qd = normPhone(q);
+    leads = leads.filter(l=> (l.name||'').toLowerCase().includes(q) || (l.phone||'').includes(q) || (qd && normPhone(l.phone).includes(qd)));
+  }
+  const totalFiltered = leads.length;
+  const pages = Math.max(1, Math.ceil(totalFiltered/PAGE_SIZE));
+  if(adminPage >= pages) adminPage = pages-1;
+  leads = leads.slice(adminPage*PAGE_SIZE, (adminPage+1)*PAGE_SIZE);
 
   if(leads.length===0){
+    document.getElementById('admin-pager').innerHTML='';
     wrap.innerHTML = `<div class="empty-state"><div class="icon">📇</div><div class="msg">لا يوجد عملاء بهذه الفلاتر</div><div class="sub">أضف عملاء جدد من تبويب "إضافة بيانات"</div></div>`;
     return;
   }
@@ -789,6 +866,7 @@ function renderAdminLeadsTable(){
     <thead><tr><th>الاسم</th><th>الهاتف</th><th>الحالة</th><th>المندوب</th><th>تغيير المندوب</th></tr></thead>
     <tbody>${rows}</tbody>
   </table></div>`;
+  renderPager('admin-pager', adminPage, pages, totalFiltered, 'adminGoto');
 }
 
 function statusPill(status){
@@ -842,6 +920,7 @@ function renderNotesPanel(){
     items = items.filter(it=>it.repId===filterSel.value);
   }
   items.sort((a,b)=>b.at-a.at);
+  items = items.slice(0,100);
 
   if(items.length===0){
     wrap.innerHTML = `<div class="empty-state"><div class="icon">📝</div><div class="msg">لسه مفيش ملاحظات من المناديب</div></div>`;
@@ -862,7 +941,7 @@ function downloadBackupNow(){
   const a = document.createElement('a');
   const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
   a.href = url;
-  a.download = `DSR-backup-${stamp}.json`;
+  a.download = `IPPI-backup-${stamp}.json`;
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -895,6 +974,7 @@ async function loadAutoBackups(){
 
 async function restoreAutoBackup(ts){
   if(!confirm('هل أنت متأكد؟ هيتم استبدال كل البيانات الحالية بالنسخة دي (هيتم حفظ نسخة من الوضع الحالي تلقائيًا قبل الاستعادة).')) return;
+  clearTimeout(saveTimer); savePending = false; setSaveState('');
   try{
     const res = await fetch(SCRIPT_URL + '?action=restore&ts=' + encodeURIComponent(ts));
     const result = await res.json();
@@ -916,6 +996,9 @@ async function addSingleLead(){
   const phone = document.getElementById('add-phone').value.trim();
   const note = document.getElementById('add-note').value.trim();
   if(!name || !phone){ showToast('اكتب اسم ورقم هاتف على الأقل'); return; }
+  const np = normPhone(phone);
+  const dup = np && DB.leads.find(l=>normPhone(l.phone)===np);
+  if(dup){ alert('⚠️ الرقم ده موجود بالفعل باسم: ' + dup.name); return; }
 
   DB.leads.push(newLead(name, phone, note));
   await saveDB();
@@ -930,21 +1013,25 @@ async function addBulkLeads(){
   const raw = document.getElementById('bulk-input').value.trim();
   if(!raw){ showToast('الصق بيانات العملاء أولاً'); return; }
   const lines = raw.split('\n').map(l=>l.trim()).filter(Boolean);
-  let count = 0;
+  let count = 0, dups = 0;
+  const seen = new Set(DB.leads.map(l=>normPhone(l.phone)));
   lines.forEach(line=>{
     const parts = line.split(',').map(p=>p.trim());
     const name = parts[0] || '';
     const phone = parts[1] || '';
     const note = parts.slice(2).join(', ') || '';
     if(name && phone){
+      const np = normPhone(phone);
+      if(np && seen.has(np)){ dups++; return; }
+      if(np) seen.add(np);
       DB.leads.push(newLead(name, phone, note));
       count++;
     }
   });
-  if(count===0){ showToast('مفيش سطور صحيحة (الاسم, الهاتف)'); return; }
-  await saveDB();
+  if(count===0){ showToast(dups ? `كل الأرقام دي موجودة بالفعل (${dups})` : 'مفيش سطور صحيحة (الاسم, الهاتف)'); return; }
+  await saveDBNow();
   document.getElementById('bulk-input').value='';
-  showToast(`تم إضافة ${count} عميل ✓`);
+  showToast(`تم إضافة ${count} عميل ✓${dups ? ` (تخطينا ${dups} مكرر)` : ''}`);
   renderAdmin();
 }
 
@@ -997,13 +1084,17 @@ async function importRowsToLeads(rows){
   const firstRowJoined = (rows[0]||[]).join(' ').toString().toLowerCase();
   if(headerWords.some(h=>firstRowJoined.includes(h))) startIdx = 1;
 
-  let added = 0, skipped = 0;
+  let added = 0, skipped = 0, dups = 0;
+  const seen = new Set(DB.leads.map(l=>normPhone(l.phone)));
   for(let i=startIdx; i<rows.length; i++){
     const r = rows[i] || [];
     const name = (r[0]||'').toString().trim();
     const phone = (r[1]||'').toString().trim();
     const note = (r[2]||'').toString().trim();
     if(name && phone){
+      const np = normPhone(phone);
+      if(np && seen.has(np)){ dups++; continue; }
+      if(np) seen.add(np);
       DB.leads.push(newLead(name, phone, note));
       added++;
     }else if(name || phone){
@@ -1012,13 +1103,14 @@ async function importRowsToLeads(rows){
   }
 
   if(added===0){
-    preview.innerHTML = `<div class="login-error" style="display:block;">مفيش صفوف صحيحة (لازم اسم + هاتف على الأقل في كل صف)</div>`;
+    preview.innerHTML = `<div class="login-error" style="display:block;">${dups ? `كل الأرقام دي موجودة بالفعل (${dups} مكرر)` : 'مفيش صفوف صحيحة (لازم اسم + هاتف على الأقل في كل صف)'}</div>`;
     return;
   }
 
-  await saveDB();
+  preview.innerHTML = `<div class="sub">جاري الحفظ...</div>`;
+  await saveDBNow();
   preview.innerHTML = `<div style="background:rgba(31,111,107,0.1);color:var(--teal);border-radius:8px;padding:10px 14px;font-size:13.5px;font-weight:700;">
-    تم استيراد ${added} عميل بنجاح ✓ ${skipped ? `(تخطينا ${skipped} صف ناقص بيانات)` : ''}
+    تم استيراد ${added} عميل بنجاح ✓ ${skipped ? `(تخطينا ${skipped} صف ناقص بيانات)` : ''} ${dups ? `(تخطينا ${dups} رقم مكرر)` : ''}
   </div>`;
   showToast(`تم استيراد ${added} عميل من الإكسل ✓`);
   renderAdmin();
@@ -1125,7 +1217,7 @@ async function changeOwnPassword(){
   if(newPass === null) return;
   if(!newPass.trim()){ alert('كلمة المرور الجديدة فاضية'); return; }
   target.password = newPass.trim();
-  await saveDB();
+  await saveDBNow();
   showToast('تم تغيير كلمة المرور ✓');
 }
 
@@ -1145,9 +1237,19 @@ function renderRepLeads(){
   const statusFilter = document.getElementById('rep-filter-status').value;
   let mine = DB.leads.filter(l=>l.repId===rep.id).sort((a,b)=>b.createdAt-a.createdAt);
   if(statusFilter !== 'all') mine = mine.filter(l=>l.status===statusFilter);
+  const q = (document.getElementById('rep-search').value||'').trim().toLowerCase();
+  if(q){
+    const qd = normPhone(q);
+    mine = mine.filter(l=> (l.name||'').toLowerCase().includes(q) || (l.phone||'').includes(q) || (qd && normPhone(l.phone).includes(qd)));
+  }
+  const totalFiltered = mine.length;
+  const pages = Math.max(1, Math.ceil(totalFiltered/PAGE_SIZE));
+  if(repPage >= pages) repPage = pages-1;
+  mine = mine.slice(repPage*PAGE_SIZE, (repPage+1)*PAGE_SIZE);
 
   const wrap = document.getElementById('rep-leads-wrap');
   if(mine.length===0){
+    document.getElementById('rep-pager').innerHTML='';
     wrap.innerHTML = `<div class="empty-state"><div class="icon">🗂️</div><div class="msg">مفيش عملاء بهذه الحالة</div><div class="sub">هيظهر هنا أي عميل يوزّعه لك المدير</div></div>`;
     return;
   }
@@ -1159,6 +1261,7 @@ function renderRepLeads(){
       ${l.note ? `<div class="extra">${escapeHtml(l.note)}</div>` : ''}
     </div>
   `).join('') + `</div>`;
+  renderPager('rep-pager', repPage, pages, totalFiltered, 'repGoto');
 }
 
 /* ===================== LEAD MODAL ===================== */
@@ -1249,7 +1352,46 @@ async function addNote(){
   showToast('تم حفظ الملاحظة ✓');
 }
 
-/* ===================== UTIL ===================== */
+/* ===================== PAGING + DELETE ===================== */
+function renderPager(id, page, pages, total, fn){
+  const el = document.getElementById(id);
+  if(!el) return;
+  if(pages<=1){ el.innerHTML = total ? `<span>${total} عميل</span>` : ''; return; }
+  const from = page*PAGE_SIZE+1, to = Math.min(total,(page+1)*PAGE_SIZE);
+  el.innerHTML = `<button class="btn btn-outline btn-sm" ${page===0?'disabled':''} onclick="${fn}(${page-1})">السابق</button>
+    <span>${from}–${to} من ${total}</span>
+    <button class="btn btn-outline btn-sm" ${page>=pages-1?'disabled':''} onclick="${fn}(${page+1})">التالي</button>`;
+}
+function adminFilterChanged(){ adminPage = 0; renderAdminLeadsTable(); }
+function adminGoto(p){ adminPage = p; renderAdminLeadsTable(); }
+function repFilterChanged(){ repPage = 0; renderRepLeads(); }
+function repGoto(p){ repPage = p; renderRepLeads(); }
+
+async function deleteAllLeads(){
+  if(DB.leads.length===0){ showToast('مفيش عملاء عشان يتحذفوا'); return; }
+  if(!confirm(`⚠️ هيتم حذف كل العملاء (${DB.leads.length}) نهائيًا من كل الأجهزة.\nهننزّل نسخة احتياطية على جهازك الأول. تكمل؟`)) return;
+  const word = prompt('للتأكيد النهائي اكتب كلمة: حذف');
+  if(word === null || word.trim() !== 'حذف'){ showToast('تم إلغاء الحذف'); return; }
+  downloadBackupNow();
+  DB.leads = [];
+  adminPage = 0;
+  const ok = await saveDBNow();
+  showToast(ok ? 'تم حذف كل العملاء ✓' : 'تعذر حفظ الحذف، حاول تاني');
+  renderAdmin();
+}
+
+async function deleteCurrentLead(){
+  const lead = DB.leads.find(l=>l.id===currentLeadId);
+  if(!lead) return;
+  if(!confirm(`حذف العميل "${lead.name}" نهائيًا؟`)) return;
+  DB.leads = DB.leads.filter(l=>l.id!==lead.id);
+  closeLeadModal();
+  await saveDB();
+  renderAdmin();
+  showToast('تم حذف العميل');
+}
+
+/* ===================== UTIL =====================
 function escapeHtml(str){
   return (str||'').toString()
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
