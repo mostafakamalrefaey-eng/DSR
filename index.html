@@ -92,6 +92,7 @@
     padding:12px 18px;border-radius:10px;border:none;cursor:pointer;
     font-family:inherit;font-weight:700;font-size:14.5px;transition:.15s;
   }
+  .btn:disabled{opacity:.6;cursor:default;}
   .btn-primary{background:var(--ink);color:var(--gold-soft);width:100%;margin-top:6px;}
   .btn-primary:hover{background:#0d1117;}
   .btn-gold{background:var(--gold);color:var(--ink);}
@@ -313,7 +314,7 @@
       <label>كلمة المرور</label>
       <input type="password" id="login-password" placeholder="••••••••">
     </div>
-    <button class="btn btn-primary" onclick="doLogin()">دخول</button>
+    <button class="btn btn-primary" id="login-submit-btn" onclick="doLogin()">دخول</button>
 
     <div class="app-credit">
       <div class="app-credit-name">DSR</div>
@@ -326,9 +327,9 @@
 <div id="app-screen">
   <div class="topbar">
     <div class="topbar-left">
-      <div class="brand-mark">IPPI</div>
+      <div class="brand-mark">م</div>
       <div>
-        <div class="topbar-title"></div>
+        <div class="topbar-title">مُوزّع</div>
         <div class="topbar-sub" id="topbar-sub">لوحة المدير</div>
       </div>
     </div>
@@ -535,7 +536,8 @@
 // ألصق هنا رابط الـ Web App اللي هتاخده بعد نشر كود Apps Script على الشيت
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz4CO-NtNpzZojRHWm5eSd0TTqoaCi2zHi6K_rMbtQdMOkIGX_PG0OzIWIa1QLNkIPb/exec';
 
-let DB = null; // {admin:{username,password}, reps:[], leads:[]}
+let DB = null; // {admin:{username,password}, reps:[], leads:[]} - يتكوّن كامل بعد الدخول بس
+let authData = null; // {admin, reps} فقط - بيانات خفيفة لشاشة الدخول
 let session = null; // {role:'admin'|'rep', repId?}
 let currentLeadId = null;
 let roleTab = 'admin';
@@ -544,12 +546,13 @@ function uid(prefix){ return prefix + '_' + Date.now().toString(36) + Math.rando
 
 let dbConnected = false;
 
-async function loadDB(){
+// بيانات خفيفة (يوزرات وباسوردات بس) — بتتحمّل فور فتح الصفحة عشان الدخول يكون سريع
+async function loadAuthData(){
   try{
-    const res = await fetch(SCRIPT_URL, { cache:'no-store' });
+    const res = await fetch(SCRIPT_URL + '?action=meta', { cache:'no-store' });
     const data = await res.json();
     if(data && data.admin){
-      DB = data;
+      authData = data;
       dbConnected = true;
       updateConnBanner();
       return;
@@ -558,8 +561,29 @@ async function loadDB(){
   }catch(e){
     console.error(e);
     dbConnected = false;
-    DB = null;
+    authData = null;
     updateConnBanner();
+  }
+}
+
+// بيانات العملاء الكاملة (التقيلة) — بتتحمّل بس بعد نجاح تسجيل الدخول
+async function loadFullDB(){
+  try{
+    const res = await fetch(SCRIPT_URL + '?action=leads', { cache:'no-store' });
+    const data = await res.json();
+    DB = {
+      admin: authData.admin,
+      reps: authData.reps,
+      leads: (data && Array.isArray(data.leads)) ? data.leads : []
+    };
+    dbConnected = true;
+    updateConnBanner();
+    return true;
+  }catch(e){
+    console.error(e);
+    dbConnected = false;
+    updateConnBanner();
+    return false;
   }
 }
 
@@ -577,7 +601,7 @@ function updateConnBanner(){
 async function retryLoadDB(){
   const banner = document.getElementById('conn-banner');
   if(banner) banner.innerHTML = 'جاري إعادة المحاولة...';
-  await loadDB();
+  await loadAuthData();
 }
 
 async function saveDB(){
@@ -616,7 +640,7 @@ function switchRoleTab(role){
 
 async function doLogin(){
   const errBox = document.getElementById('login-error');
-  if(!DB){
+  if(!authData){
     errBox.textContent = 'لسه بيتم تحميل البيانات، حاول تاني بعد ثانية';
     errBox.style.display='block';
     return;
@@ -631,24 +655,45 @@ async function doLogin(){
     return;
   }
 
+  let matchedSession = null;
   if(roleTab === 'admin'){
-    if(u === DB.admin.username && p === DB.admin.password){
-      session = { role:'admin' };
-      enterApp();
+    if(u === authData.admin.username && p === authData.admin.password){
+      matchedSession = { role:'admin' };
     }else{
       errBox.textContent = 'بيانات المدير غير صحيحة';
       errBox.style.display='block';
+      return;
     }
   }else{
-    const rep = DB.reps.find(r => r.username === u && r.password === p);
+    const rep = authData.reps.find(r => r.username === u && r.password === p);
     if(rep){
-      session = { role:'rep', repId: rep.id };
-      enterApp();
+      matchedSession = { role:'rep', repId: rep.id };
     }else{
       errBox.textContent = 'اسم المستخدم أو كلمة المرور غير صحيحة';
       errBox.style.display='block';
+      return;
     }
   }
+
+  // اليوزر والباسورد صح، دلوقتي نجيب بيانات العملاء (الجزء التقيل)
+  const loginBtn = document.getElementById('login-submit-btn');
+  const originalText = loginBtn.textContent;
+  loginBtn.textContent = 'جاري تحميل بيانات العملاء...';
+  loginBtn.disabled = true;
+
+  const ok = await loadFullDB();
+
+  loginBtn.textContent = originalText;
+  loginBtn.disabled = false;
+
+  if(!ok){
+    errBox.textContent = 'تعذر تحميل بيانات العملاء، تأكد من الاتصال بالإنترنت وحاول تاني';
+    errBox.style.display='block';
+    return;
+  }
+
+  session = matchedSession;
+  enterApp();
 }
 
 function doLogout(){
@@ -855,7 +900,7 @@ async function restoreAutoBackup(ts){
     const result = await res.json();
     if(result && result.ok){
       showToast('تمت الاستعادة بنجاح ✓');
-      await loadDB();
+      await loadFullDB();
       renderAdmin();
     }else{
       showToast('تعذرت الاستعادة، حاول تاني');
@@ -1217,7 +1262,7 @@ document.getElementById('lead-modal').addEventListener('click', (e)=>{
 
 /* ===================== INIT ===================== */
 (async function init(){
-  await loadDB();
+  await loadAuthData();
 })();
 </script>
 </body>
