@@ -329,7 +329,7 @@
     <div class="app-credit">
       <div class="app-credit-name">DSR</div>
       <div class="app-credit-by">Edit By Mostafa Refaey</div>
-      <div class="app-credit-by" style="margin-top:2px;">النسخة: v6</div>
+      <div class="app-credit-by" style="margin-top:2px;">النسخة: v8</div>
     </div>
   </div>
 </div>
@@ -455,10 +455,6 @@
           <h3>المناديب الحاليين</h3>
           <div class="toolbar"><button class="btn btn-danger btn-sm" onclick="deleteAllReps()">🧹 حذف كل المناديب</button></div>
           <div id="reps-list"></div>
-          <details style="margin-top:14px;">
-            <summary style="cursor:pointer;font-size:12.5px;color:#8a8168;font-weight:700;">🔧 فحص فني (بيانات المناديب الخام)</summary>
-            <pre id="reps-raw" class="mono" style="white-space:pre-wrap;word-break:break-all;font-size:12px;direction:ltr;text-align:left;"></pre>
-          </details>
         </div>
       </div>
 
@@ -895,16 +891,15 @@ function statusPill(status){
 }
 
 function renderRepsList(){
-  const wrap = document.getElementById('reps-list');
-  const rawEl = document.getElementById('reps-raw');
-  if(rawEl) rawEl.textContent = 'عدد المعروض: ' + DB.reps.length + '\nالمعروض: ' + JSON.stringify(DB.reps) + '\nالخام من الخادم وقت التحميل: ' + JSON.stringify(rawRepsFromServer);
-  if(DB.reps.length===0){
-    wrap.innerHTML = `<div class="empty-state"><div class="icon">🧑‍💼</div><div class="msg">لسه مفيش مناديب</div><div class="sub">أضف أول مندوب من النموذج فوق</div></div>`;
-    return;
-  }
-  wrap.innerHTML = DB.reps.map(r=>{
-    const count = DB.leads.filter(l=>l.repId===r.id).length;
-    return `<div class="rep-card">
+  const targets = document.querySelectorAll('[id="reps-list"]');
+  let html;
+  try{
+    if(DB.reps.length===0){
+      html = `<div class="empty-state"><div class="icon">🧑‍💼</div><div class="msg">لسه مفيش مناديب</div><div class="sub">أضف أول مندوب من النموذج فوق</div></div>`;
+    }else{
+      html = DB.reps.map(r=>{
+        const count = DB.leads.filter(l=>l.repId===r.id).length;
+        return `<div class="rep-card">
       <div>
         <div class="r-name">${escapeHtml(r.name)}</div>
         <div class="r-user">${escapeHtml(r.username)} / ${escapeHtml(r.password)}</div>
@@ -914,7 +909,13 @@ function renderRepsList(){
         <button class="btn btn-danger btn-sm" onclick="removeRep('${r.id}')">حذف</button>
       </div>
     </div>`;
-  }).join('');
+      }).join('');
+    }
+  }catch(e){
+    console.error(e);
+    html = `<div class="login-error" style="display:block;">خطأ في رسم المناديب: ${escapeHtml(e.message)}</div>`;
+  }
+  targets.forEach(t=>{ t.innerHTML = html; });
 }
 
 /* ===================== ADMIN: REPS' NOTES ===================== */
